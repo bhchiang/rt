@@ -1,4 +1,4 @@
-from common import *
+from common import IMAGE_HEIGHT, IMAGE_WIDTH
 
 
 def create_pixel_list(img):
@@ -9,7 +9,7 @@ def create_pixel_list(img):
 def write_pixel_list(pxls):
     print(f'P3')
     print(f'{IMAGE_WIDTH} {IMAGE_HEIGHT}')
-    print('255')
+    print(f'255')
 
     for r, g, b in pxls:
         print(f'{r} {g} {b}')

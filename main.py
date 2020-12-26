@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from jax import vmap
 
-from common import *
+from common import IMAGE_HEIGHT, IMAGE_WIDTH
 from utils import create_pixel_list, write_pixel_list
 
 # create indices
