@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from vec3 import vec, assert_vec_eq
+import vec
 
 
 def create(origin, direction):
@@ -13,10 +13,10 @@ def at(r, t):
 
 if __name__ == "__main__":
     # run tests
-    origin = vec(0, 0, 0)
-    direction = vec(1, 0, 0)
+    origin = vec.create(0, 0, 0)
+    direction = vec.create(1, 0, 0)
 
     r = create(origin, direction)
-    assert_vec_eq(at(r, 2), vec(2, 0, 0))
+    vec.assert_equal(at(r, 2), (2, 0, 0))
 
     print("passed tests")

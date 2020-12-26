@@ -5,16 +5,16 @@ import jax.numpy as jnp
 from jax import vmap, lax, jit
 
 import ray
-from vec3 import vec, unit, x, y, z
+import vec
 from common import IMAGE_HEIGHT, IMAGE_WIDTH, VIEWPORT_HEIGHT, VIEWPORT_WIDTH, FOCAL_LENGTH
 from utils import create_pixel_list, write_pixel_list, eprint
 
 # camera
-origin = vec()
-horizontal = vec(VIEWPORT_WIDTH, 0, 0)
-vertical = vec(0, VIEWPORT_HEIGHT, 0)
+origin = vec.create()
+horizontal = vec.create(VIEWPORT_WIDTH, 0, 0)
+vertical = vec.create(0, VIEWPORT_HEIGHT, 0)
 lower_left_corner = origin - (horizontal/2) - \
-    (vertical/2) - vec(0, 0, FOCAL_LENGTH)
+    (vertical/2) - vec.create(0, 0, FOCAL_LENGTH)
 
 # indices
 xs = jnp.arange(IMAGE_WIDTH)
@@ -41,17 +41,17 @@ def hit_sphere(center, radius, r):
 
 def color(r):
     orig, dir = r
-    center = vec(0, 0, -1)
+    center = vec.create(0, 0, -1)
     # earliest intersection time
     h_t = hit_sphere(center, 0.5, r)
     # eprint(r.at(h_t))
-    n = unit(ray.at(r, h_t) - center)
+    n = vec.unit(ray.at(r, h_t) - center)
     n_c = 0.5*(n + 1)
     # eprint(n, jnp.linalg.norm(n), n_c, 255.99*n_c)
 
-    unit_dir = unit(dir)
-    t = 0.5 * (y(unit_dir) + 1)  # -1 < y < 1 -> 0 < t < 1
-    bg = (1-t) * vec(1, 1, 1) + t*vec(0.5, 0.7, 1.0)
+    unit_dir = vec.unit(dir)
+    t = 0.5 * (vec.y(unit_dir) + 1)  # -1 < y < 1 -> 0 < t < 1
+    bg = (1-t) * vec.create(1, 1, 1) + t*vec.create(0.5, 0.7, 1.0)
 
     return jnp.where(h_t > 0, n_c, bg)
 
