@@ -10,6 +10,9 @@ class Ray():
     def at(self, t):
         return self.orig + t*self.dir
 
+    def __iter__(self):
+        return iter((self.orig, self.dir))
+
 
 if __name__ == "__main__":
     # run tests

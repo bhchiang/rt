@@ -1,10 +1,12 @@
+import sys
+
 import jax.numpy as jnp
-from jax import vmap
+from jax import vmap, lax
 
 from ray import Ray
 from vec3 import vec, unit, x, y, z
 from common import IMAGE_HEIGHT, IMAGE_WIDTH, VIEWPORT_HEIGHT, VIEWPORT_WIDTH, FOCAL_LENGTH
-from utils import create_pixel_list, write_pixel_list
+from utils import create_pixel_list, write_pixel_list, eprint
 
 # camera
 origin = vec()
@@ -20,12 +22,25 @@ a = jnp.array(list(zip(X.ravel(), Y.ravel()))).reshape(
 # print(a.shape)
 
 
+def hit_sphere(center, radius, r):
+    orig, dir = r
+    a = dir.dot(dir)
+    b = 2 * (orig.dot(dir) + dir.dot(center))
+    c = (orig - center).dot(orig - center) - radius**2
+    # eprint(a, b, c)
+    d = b**2 - 4*a*c
+    # eprint(d)
+    return d > 0
+
+
 def color(r):
+    hit = vec(1, 0, 0)
+
     unit_dir = unit(r.dir)
     t = 0.5 * (y(unit_dir) + 1)  # -1 < y < 1 -> 0 < t < 1
-    c = (1-t) * vec(1, 1, 1) + t*vec(0.5, 0.7, 1.0)
-    print(t, c)
-    return c
+    bg = (1-t) * vec(1, 1, 1) + t*vec(0.5, 0.7, 1.0)
+
+    return jnp.where(hit_sphere(vec(0, 0, -1), 0.5, r), hit, bg)
 
 
 def trace(d):
@@ -45,10 +60,12 @@ def trace(d):
     return (255.99 * c).astype(jnp.int32)
 
 
+# trace(a[0, 0])
+# sys.exit()
+
 img = vmap(vmap(trace))(a)
-# print(img)
 pxls = create_pixel_list(img)
-# print(pxls[:10], pxls.shape)
+eprint(pxls[:10], pxls.shape)
 
 
 write_pixel_list(pxls)

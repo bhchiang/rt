@@ -1,4 +1,9 @@
+import sys
 from common import IMAGE_HEIGHT, IMAGE_WIDTH
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 
 def create_pixel_list(img):
