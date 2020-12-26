@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+from vec3 import vec, assert_vec_eq
 
 
 class Ray():
@@ -12,4 +13,10 @@ class Ray():
 
 if __name__ == "__main__":
     # run tests
-    r = Ray()
+    origin = vec(0, 0, 0)
+    direction = vec(1, 0, 0)
+
+    r = Ray(origin, direction)
+    assert_vec_eq(r.at(2), vec(2, 0, 0))
+
+    print("passed tests")
