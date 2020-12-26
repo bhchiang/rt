@@ -2,16 +2,13 @@ import jax.numpy as jnp
 from vec3 import vec, assert_vec_eq
 
 
-class Ray():
-    def __init__(self, origin=None, direction=None):
-        self.orig = origin
-        self.dir = direction
+def create(origin, direction):
+    return jnp.array([origin, direction])
 
-    def at(self, t):
-        return self.orig + t*self.dir
 
-    def __iter__(self):
-        return iter((self.orig, self.dir))
+def at(r, t):
+    orig, dir = r
+    return orig + t*dir
 
 
 if __name__ == "__main__":
@@ -19,7 +16,7 @@ if __name__ == "__main__":
     origin = vec(0, 0, 0)
     direction = vec(1, 0, 0)
 
-    r = Ray(origin, direction)
-    assert_vec_eq(r.at(2), vec(2, 0, 0))
+    r = create(origin, direction)
+    assert_vec_eq(at(r, 2), vec(2, 0, 0))
 
     print("passed tests")

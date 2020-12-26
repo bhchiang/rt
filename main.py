@@ -4,7 +4,7 @@ from IPython import embed
 import jax.numpy as jnp
 from jax import vmap, lax, jit
 
-from ray import Ray
+import ray
 from vec3 import vec, unit, x, y, z
 from common import IMAGE_HEIGHT, IMAGE_WIDTH, VIEWPORT_HEIGHT, VIEWPORT_WIDTH, FOCAL_LENGTH
 from utils import create_pixel_list, write_pixel_list, eprint
@@ -40,15 +40,16 @@ def hit_sphere(center, radius, r):
 
 
 def color(r):
+    orig, dir = r
     center = vec(0, 0, -1)
     # earliest intersection time
     h_t = hit_sphere(center, 0.5, r)
     # eprint(r.at(h_t))
-    n = unit(r.at(h_t) - center)
+    n = unit(ray.at(r, h_t) - center)
     n_c = 0.5*(n + 1)
     # eprint(n, jnp.linalg.norm(n), n_c, 255.99*n_c)
 
-    unit_dir = unit(r.dir)
+    unit_dir = unit(dir)
     t = 0.5 * (y(unit_dir) + 1)  # -1 < y < 1 -> 0 < t < 1
     bg = (1-t) * vec(1, 1, 1) + t*vec(0.5, 0.7, 1.0)
 
@@ -66,7 +67,7 @@ def trace(d):
     begin = origin
     end = lower_left_corner + u*horizontal + v*vertical
 
-    r = Ray(origin, end - begin)
+    r = ray.create(origin, end - begin)
     c = color(r)
 
     # scale
