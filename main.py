@@ -6,8 +6,10 @@ from jax import vmap, lax, jit
 
 import ray
 import vec
+import pixels
+from surfaces import sphere
+
 from common import IMAGE_HEIGHT, IMAGE_WIDTH, VIEWPORT_HEIGHT, VIEWPORT_WIDTH, FOCAL_LENGTH
-from utils import create_pixel_list, write_pixel_list, eprint
 
 # camera
 origin = vec.create()
@@ -28,26 +30,16 @@ idxs = jnp.dstack((us, jnp.flip(vs)))
 # print(idxs[0, IMAGE_WIDTH])
 
 
-def hit_sphere(center, radius, r):
-    orig, dir = r
-    a = dir.dot(dir)
-    b = 2 * (orig.dot(dir) - dir.dot(center))
-    c = (orig - center).dot(orig - center) - radius**2
-    d = b**2 - 4*a*c
-    t = (-b - jnp.sqrt(d)) / 2*a
-    # eprint(d, t)
-    return jnp.where(d > 0, t, -1)
-
-
 def color(r):
     orig, dir = r
     center = vec.create(0, 0, -1)
+    radius = 0.5
     # earliest intersection time
-    h_t = hit_sphere(center, 0.5, r)
-    # eprint(r.at(h_t))
+    h_t = sphere.hit(center, radius, r)
+    # print(r.at(h_t))
     n = vec.unit(ray.at(r, h_t) - center)
     n_c = 0.5*(n + 1)
-    # eprint(n, jnp.linalg.norm(n), n_c, 255.99*n_c)
+    # print(n, jnp.linalg.norm(n), n_c, 255.99*n_c)
 
     unit_dir = vec.unit(dir)
     t = 0.5 * (vec.y(unit_dir) + 1)  # -1 < y < 1 -> 0 < t < 1
@@ -78,8 +70,8 @@ def trace(d):
 # print(idxs.shape)
 
 img = vmap(vmap(trace))(idxs)
-pxls = create_pixel_list(img)
-eprint(pxls[:10], pxls.shape)
+pl = pixels.flatten(img)
+# print(pl[:10], pl.shape)
 
 
-write_pixel_list(pxls)
+pixels.write(pl)
