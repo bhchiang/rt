@@ -3,14 +3,14 @@ import argparse
 
 from IPython import embed
 import jax.numpy as jnp
-from jax import vmap, lax, jit
+from jax import vmap, lax, jit, random
 
 import ray
 import vec
 import camera
 import pixels
 from surfaces import sphere, record, group
-from camera import IMAGE_HEIGHT, IMAGE_WIDTH
+from common import IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL
 
 
 # indices
@@ -31,7 +31,8 @@ surfaces = [
 g = group.create(surfaces)
 
 
-def color(r):
+def color(u, v):
+    r = camera.shoot(u, v)
     _, dir = r
 
     rc = group.hit(r, 0., jnp.inf, g)
@@ -54,15 +55,22 @@ def color(r):
 def trace(d):
     # (i, j) = (0, 0) is lower left corner
     # (IMAGE_WIDTH, IMAGE_HEIGHT) is upper right
-    i, j = jnp.array(d, jnp.float32)
+    i, j, *key = d
 
-    u = i / (IMAGE_WIDTH-1)
-    v = j / (IMAGE_HEIGHT-1)
+    # create perturbations for anti-aliasing
+    ps = random.uniform(
+        jnp.array(key), (SAMPLES_PER_PIXEL, 2))
 
-    r = camera.shoot(u, v)
-    c = color(r)
+    def sample(d):
+        pu, pv = d
+        u = (i + pu) / (IMAGE_WIDTH - 1)
+        v = (j + pv) / (IMAGE_HEIGHT - 1)
+        return color(u, v)
 
-    # scale
+    colors = vmap(sample)(ps)
+    c = jnp.sum(colors, axis=0) / SAMPLES_PER_PIXEL
+    # embed()
+
     return (255.99 * c).astype(jnp.int32)
 
 
@@ -70,13 +78,17 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--debug", help="", action="store_true")
 args = parser.parse_args()
 
+key = random.PRNGKey(0)
+keys = random.split(key, IMAGE_HEIGHT *
+                    IMAGE_WIDTH).reshape(IMAGE_HEIGHT, IMAGE_WIDTH, 2)  # uint32
+final_idxs = jnp.dstack(
+    (idxs.astype(jnp.uint32), keys))  # prevent key overflow
+
 if args.debug:
     embed()
     sys.exit()
 
-# print(idxs.shape)
-img = vmap(vmap(trace))(idxs)
-pl = pixels.flatten(img)
-# print(pl[:10], pl.shape)
 
+img = vmap(vmap(trace))(final_idxs)
+pl = pixels.flatten(img)
 pixels.write(pl)

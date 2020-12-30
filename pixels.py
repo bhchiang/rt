@@ -1,4 +1,4 @@
-from camera import IMAGE_HEIGHT, IMAGE_WIDTH
+from common import IMAGE_HEIGHT, IMAGE_WIDTH
 
 
 def flatten(img):
