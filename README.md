@@ -6,7 +6,7 @@
 
 ## Notes
 
-Inside `vmap` (vectorization):
+Inside `vmap`:
 
 - Conditional statements like `if` are not permitted due to the tracing, use `lax.cond` or `jnp.where`
 - Doing `p_a and p_b` or `p_a or p_b` will throw a tracing error, use `jnp.array([p_a, p_b]).any() / .all()` or `lax.bitwise_and(), bitwise_not(), bitwise_or()`
