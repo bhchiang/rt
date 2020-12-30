@@ -7,16 +7,11 @@ from jax import vmap, lax, jit
 
 import ray
 import vec
+import camera
 import pixels
 from surfaces import sphere, record, group
-from common import IMAGE_HEIGHT, IMAGE_WIDTH, VIEWPORT_HEIGHT, VIEWPORT_WIDTH, FOCAL_LENGTH
+from camera import IMAGE_HEIGHT, IMAGE_WIDTH
 
-# camera
-origin = vec.create()
-horizontal = vec.create(VIEWPORT_WIDTH, 0, 0)
-vertical = vec.create(0, VIEWPORT_HEIGHT, 0)
-lower_left_corner = origin - (horizontal/2) - \
-    (vertical/2) - vec.create(0, 0, FOCAL_LENGTH)
 
 # indices
 xs = jnp.arange(IMAGE_WIDTH)
@@ -64,10 +59,7 @@ def trace(d):
     u = i / (IMAGE_WIDTH-1)
     v = j / (IMAGE_HEIGHT-1)
 
-    begin = origin
-    end = lower_left_corner + u*horizontal + v*vertical
-
-    r = ray.create(origin, end - begin)
+    r = camera.shoot(u, v)
     c = color(r)
 
     # scale
