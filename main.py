@@ -7,7 +7,7 @@ from jax import vmap, lax, jit
 import ray
 import vec
 import pixels
-from surfaces import sphere
+from surfaces import sphere, record
 
 from common import IMAGE_HEIGHT, IMAGE_WIDTH, VIEWPORT_HEIGHT, VIEWPORT_WIDTH, FOCAL_LENGTH
 
@@ -29,23 +29,26 @@ idxs = jnp.dstack((us, jnp.flip(vs)))
 # print(idxs[IMAGE_HEIGHT, 0])
 # print(idxs[0, IMAGE_WIDTH])
 
+# surfaces
+# g = group.create()
+
 
 def color(r):
-    orig, dir = r
-    center = vec.create(0, 0, -1)
-    radius = 0.5
-    # earliest intersection time
-    h_t = sphere.hit(center, radius, r)
-    # print(r.at(h_t))
-    n = vec.unit(ray.at(r, h_t) - center)
-    n_c = 0.5*(n + 1)
-    # print(n, jnp.linalg.norm(n), n_c, 255.99*n_c)
+    _, dir = r
+    center, radius = vec.create(0, 0, -1), 0.5
+    sp = sphere.create(center, radius)
+    rc = sphere.hit(sp, r,  0., jnp.inf)
 
-    unit_dir = vec.unit(dir)
-    t = 0.5 * (vec.y(unit_dir) + 1)  # -1 < y < 1 -> 0 < t < 1
-    bg = (1-t) * vec.create(1, 1, 1) + t*vec.create(0.5, 0.7, 1.0)
+    def n(rc):
+        _, _, _, n = record.unpack(rc)
+        return 0.5*(n + 1)
 
-    return jnp.where(h_t > 0, n_c, bg)
+    def bg(_):
+        u_d = vec.unit(dir)
+        t = 0.5 * (vec.y(u_d) + 1)  # -1 < y < 1 -> 0 < t < 1
+        return (1-t) * vec.create(1, 1, 1) + t*vec.create(0.5, 0.7, 1.0)
+
+    return lax.cond(record.exists(rc), n, bg, rc)
 
 
 def trace(d):
@@ -67,8 +70,8 @@ def trace(d):
 
 
 # embed()
+# sys.exit()
 # print(idxs.shape)
-
 img = vmap(vmap(trace))(idxs)
 pl = pixels.flatten(img)
 # print(pl[:10], pl.shape)

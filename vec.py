@@ -21,5 +21,14 @@ def z(v):
     return v[2]
 
 
-def assert_equal(v1, v2):
-    assert jnp.linalg.norm(v1 - v2) < 1e-6
+def pad(s, to=3):
+    if isinstance(s, jnp.ndarray):
+        d = to - len(s)
+        return jnp.pad(s, (0, d))
+    else:
+        # assume scalar
+        return jnp.zeros(to).at[0].set(s)
+
+
+def equal(v1, v2):
+    return jnp.linalg.norm(v1 - v2) < 1e-6
