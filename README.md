@@ -12,7 +12,7 @@ python main.py --debug # dev
 
 ## Notes
 
-Inside `vmap`, because of the tracing:
+Inside `vmap`, because of the tracing performed for vectorization:
 
 - Avoid classes for storing data, use `jnp.ndarray`
 - Avoid conditional statements like `if / else`, use `lax.cond` (if further computation necessarey) or `jnp.where`

@@ -1,5 +1,6 @@
 import sys
 import argparse
+import time
 
 from IPython import embed
 import jax.numpy as jnp
@@ -10,7 +11,7 @@ import vec
 import camera
 import pixels
 from surfaces import sphere, record, group
-from common import IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL
+from common import IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH
 
 
 # indices
@@ -36,9 +37,6 @@ def color(u, v):
     _, dir = r
 
     rc = group.hit(r, 0., jnp.inf, g)
-    # center, radius =
-    # sp = sphere.create(center, radius)
-    # rc = sphere.hit(sp, r,  0., jnp.inf)
 
     def n(rc):
         _, _, _, n = record.unpack(rc)
@@ -87,7 +85,6 @@ final_idxs = jnp.dstack(
 if args.debug:
     embed()
     sys.exit()
-
 
 img = vmap(vmap(trace))(final_idxs)
 pl = pixels.flatten(img)
