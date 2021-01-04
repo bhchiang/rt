@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 
 def create(e0=0, e1=0, e2=0):
-    return jnp.array([e0, e1, e2]).astype(jnp.float32)
+    return jnp.float32(e0, e1, e2])
 
 
 def unit(v):
@@ -42,7 +42,6 @@ def random(key):
     return jax.random.uniform(key, (1, 3))
 
 
-@jit
 def sphere(key):
     # random vector in unit sphere
 
@@ -50,7 +49,7 @@ def sphere(key):
 
     def unpack(d):
         (_, *key), v = d
-        return jnp.array(key).astype(jnp.uint32), v
+        return jnp.uint32(key), v
 
     def cf(d):
         _, v = unpack(d)

@@ -38,41 +38,33 @@ def pack(idx, key, r, rc):
 
 def unpack(v):
     (idx, *key), r, *rc = v
-    return idx, jnp.array(key), r, jnp.array(rc)
+    return idx, jnp.uint32(key), r, jnp.array(rc)
 
 
 def color(u, v, key):
     r = camera.shoot(u, v)
-    _, dir = r
 
-    # def n(rc):
-    #     _, _, _, n = record.unpack(rc)
-    #     return 0.5*(n + 1)
-
-    # iterative: propagate ray until no surface hit or max depth reached
+    # propagate ray iteratively until no surface hit or max depth reached
     iv = pack(0, key, r, record.empty())
-    print(iv)
+    embed()
 
-    # condition
     def cf(v):
-        # terminate loop if false
         idx, _, _, rc = unpack(v)
+        # continue if first iter, surface hit and max depth not reached
         return lax.bitwise_or(
-            lax.bitwise_and(
-                lax.gt(idx, 0), lax.bitwise_not(record.exists(rc))),  # missed
-            lax.ge(idx, MAX_DEPTH)  # max depth exceeded
-        )
+            lax.eq(idx, 0), record.exists(rc), lax.lt(idx, MAX_DEPTH))
 
-    # body
     def bf(v):
         idx, key, r, rc = unpack(v)
         rc = group.hit(r, 0., jnp.inf, g)
 
         # generate new key
+        key, subkey = random.split(key)
+
         def tf(rc):
             # generate next ray
             t, p, ff, n = record.unpack(rc)
-            target = p + n + vec.sphere()
+            target = p + n + vec.sphere(subkey)
             n_r = ray.create(p, target - p)
             return pack(idx+1, key, n_r, rc)
 
@@ -90,9 +82,8 @@ def color(u, v, key):
 
     # return (1) black if depth exceeded or (2) modulated background
     v = lax.while_loop(cf, bf, iv)
-    print(v)
-
-    return vec.empty()
+    embed()
+    return vec.create()
 
 
 def trace(d):
@@ -114,7 +105,7 @@ def trace(d):
     c = jnp.sum(colors, axis=0) / SAMPLES_PER_PIXEL
     # embed()
 
-    return (255.99 * c).astype(jnp.int32)
+    return jnp.int32(255.99 * c)
 
 
 parser = argparse.ArgumentParser()
@@ -125,12 +116,14 @@ key = random.PRNGKey(0)
 keys = random.split(key, IMAGE_HEIGHT *
                     IMAGE_WIDTH).reshape(IMAGE_HEIGHT, IMAGE_WIDTH, 2)  # uint32
 final_idxs = jnp.dstack(
-    (idxs.astype(jnp.uint32), keys))  # prevent key overflow
+    (jnp.uint32(idxs), keys))  # prevent key overflow
 
 if args.debug:
-    embed()
+    trace(idxs[IMAGE_HEIGHT // 2, IMAGE_WIDTH // 2])
+    # embed()
     sys.exit()
 
 img = vmap(vmap(trace))(final_idxs)
+embed()
 pl = pixels.flatten(img)
 pixels.write(pl)
