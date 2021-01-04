@@ -32,38 +32,83 @@ surfaces = [
 g = group.create(surfaces)
 
 
-def color(u, v):
+def pack(idx, key, r, rc):
+    return jnp.vstack(([float(idx), *key], r, rc))
+
+
+def unpack(v):
+    (idx, *key), r, *rc = v
+    return idx, jnp.array(key), r, jnp.array(rc)
+
+
+def color(u, v, key):
     r = camera.shoot(u, v)
     _, dir = r
 
-    rc = group.hit(r, 0., jnp.inf, g)
+    # def n(rc):
+    #     _, _, _, n = record.unpack(rc)
+    #     return 0.5*(n + 1)
 
-    def n(rc):
-        _, _, _, n = record.unpack(rc)
-        return 0.5*(n + 1)
+    # iterative: propagate ray until no surface hit or max depth reached
+    iv = pack(0, key, r, record.empty())
+    print(iv)
 
-    def bg(_):
+    # condition
+    def cf(v):
+        # terminate loop if false
+        idx, _, _, rc = unpack(v)
+        return lax.bitwise_or(
+            lax.bitwise_and(
+                lax.gt(idx, 0), lax.bitwise_not(record.exists(rc))),  # missed
+            lax.ge(idx, MAX_DEPTH)  # max depth exceeded
+        )
+
+    # body
+    def bf(v):
+        idx, key, r, rc = unpack(v)
+        rc = group.hit(r, 0., jnp.inf, g)
+
+        # generate new key
+        def tf(rc):
+            # generate next ray
+            t, p, ff, n = record.unpack(rc)
+            target = p + n + vec.sphere()
+            n_r = ray.create(p, target - p)
+            return pack(idx+1, key, n_r, rc)
+
+        def ff(rc):
+            return pack(idx+1, key, r, record.empty())  # no hit
+
+        return lax.cond(record.exists(rc), tf, ff, rc)
+
+    def bg(r):
+        # get bg color given y component of ray
+        _, dir = ray.unpack(r)
         u_d = vec.unit(dir)
         t = 0.5 * (vec.y(u_d) + 1)  # -1 < y < 1 -> 0 < t < 1
         return (1-t) * vec.create(1, 1, 1) + t*vec.create(0.5, 0.7, 1.0)
 
-    return lax.cond(record.exists(rc), n, bg, rc)
+    # return (1) black if depth exceeded or (2) modulated background
+    v = lax.while_loop(cf, bf, iv)
+    print(v)
+
+    return vec.empty()
 
 
 def trace(d):
     # (i, j) = (0, 0) is lower left corner
     # (IMAGE_WIDTH, IMAGE_HEIGHT) is upper right
-    i, j, *key = d
+    i, j, *k = d
+    key = jnp.array(k)
 
     # create perturbations for anti-aliasing
-    ps = random.uniform(
-        jnp.array(key), (SAMPLES_PER_PIXEL, 2))
+    ps = random.uniform(key, (SAMPLES_PER_PIXEL, 2))
 
     def sample(d):
         pu, pv = d
         u = (i + pu) / (IMAGE_WIDTH - 1)
         v = (j + pv) / (IMAGE_HEIGHT - 1)
-        return color(u, v)
+        return color(u, v, key)
 
     colors = vmap(sample)(ps)
     c = jnp.sum(colors, axis=0) / SAMPLES_PER_PIXEL

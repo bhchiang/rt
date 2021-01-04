@@ -1,3 +1,7 @@
+from IPython import embed
+
+import jax
+from jax import lax, vmap
 import jax.numpy as jnp
 
 
@@ -32,3 +36,44 @@ def pad(s, to=3):
 
 def equal(v1, v2):
     return jnp.linalg.norm(v1 - v2) < 1e-6
+
+
+def random(key):
+    return jax.random.uniform(key, (1, 3))
+
+
+@jit
+def sphere(key):
+    # random vector in unit sphere
+
+    def pack(key, v): return jnp.vstack(([0, *key], v))
+
+    def unpack(d):
+        (_, *key), v = d
+        return jnp.array(key).astype(jnp.uint32), v
+
+    def cf(d):
+        _, v = unpack(d)
+        return jnp.linalg.norm(v) > 1
+
+    def bf(d):
+        key, _ = unpack(d)
+        key, subkey = jax.random.split(key)
+        v = random(subkey)
+        return pack(key, v)
+
+    iv = pack(key, create(1, 1, 1))
+    # embed()
+    fv = lax.while_loop(cf, bf, iv)
+    _, v = unpack(fv)
+    return v
+
+
+if __name__ == "__main__":
+    key = jax.random.PRNGKey(0)
+    # v = sphere(key)
+    vs = vmap(sphere)(jax.random.split(key, 10))
+    def check(v): assert jnp.linalg.norm(v) <= 1
+    for v in vs:
+        check(v)
+    embed()

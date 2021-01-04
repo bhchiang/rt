@@ -2,8 +2,13 @@ import jax.numpy as jnp
 import vec
 
 
-def create(origin, direction):
-    return jnp.array([origin, direction])
+def create(orig, dir):
+    return jnp.array([orig, dir])
+
+
+def unpack(r):
+    orig, dir = r
+    return orig, dir
 
 
 def at(r, t):

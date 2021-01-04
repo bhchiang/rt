@@ -18,7 +18,6 @@ def unpack(sp):
 
 def hit(r, t_min, t_max, sp):
     # returns empty record if there are no valid hits
-
     center, radius = unpack(sp)  # sphere.unpack
     orig, dir = r
 
@@ -31,8 +30,8 @@ def hit(r, t_min, t_max, sp):
     empty = record.empty()
     # print(h, d, a)
 
-    def solve(op):
-        h, d, a = op
+    def solve(v):
+        h, d, a = v
 
         def valid(t):
             return jnp.array([lax.ge(t, t_min), lax.le(t, t_max)]).all()
