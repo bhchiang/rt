@@ -4,7 +4,8 @@
 
 ## Items
 
-- [ ] Use pytree-compatible data classes instead of manually packing
+- [ ] Use data classes (registered as pytrees) and namedtuples instead of manual packing
+- [ ] Benchmark full JIT performance
 
 ## Usage
 

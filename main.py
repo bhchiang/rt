@@ -1,6 +1,7 @@
 import sys
 import argparse
 import time
+from collections import namedtuple
 
 from IPython import embed
 import jax.numpy as jnp
@@ -32,15 +33,15 @@ surfaces = [
 g = group.create(surfaces)
 
 
-def pack(idx, key, r, rc):
-    # careful: float32 to preserve precision of key
-    return jnp.vstack((jnp.float32([idx, *key]), r, rc))
+# def pack(idx, key, r, rc):
+#     # careful: float32 to preserve precision of key
+#     return jnp.vstack((jnp.float32([idx, *key]), r, rc))
 
 
-def unpack(v):
-    (idx, *key), orig, dir, *rc = v
-    r = ray.create(orig, dir)
-    return jnp.int32(idx), jnp.uint32(key), r, jnp.array(rc)
+# def unpack(v):
+#     (idx, *key), orig, dir, *rc = v
+#     r = ray.create(orig, dir)
+#     return jnp.int32(idx), jnp.uint32(key), r, jnp.array(rc)
 
 
 def color(u, v, key):
@@ -48,31 +49,31 @@ def color(u, v, key):
     r = camera.shoot(u, v)
 
     # propagate ray iteratively until no surface hit or max depth reached
-    iv = pack(0, key, r, record.empty())
+    Value = namedtuple("Value", ["idx", "key", "ray", "record"])
+    init_val = Value(idx=0, key=key, ray=r, record=record.empty())
 
-    def cf(v):
-        idx, _, _, rc = unpack(v)
+    def cf(val):
         # continue if first iter OR surface hit and max depth not reached
         return lax.bitwise_or(
-            lax.eq(idx, 0), lax.bitwise_and(record.exists(rc), lax.lt(idx, MAX_DEPTH)))
+            lax.eq(val.idx, 0), lax.bitwise_and(record.exists(val.record), lax.lt(val.idx, MAX_DEPTH)))
 
-    def bf(v):
-        idx, key, r, rc = unpack(v)
+    def bf(val):
 
         # avoid hitting surface we are reflecting off of (shadow acne)
-        rc = group.hit(r, 0.001, jnp.inf, g)
+        rc = group.hit(val.ray, 0.001, jnp.inf, g)
 
-        key, subkey = random.split(key)
+        key, subkey = random.split(val.key)
+        base_val = Value(idx=val.idx+1, key=key, ray=val.ray, record=rc)
 
         def tf(rc):
             # generate next ray
             _, p, _, n = record.unpack(rc)
             target = p + n + vec.sphere(subkey)
             n_r = ray.create(p, target - p)
-            return pack(idx+1, key, n_r, rc)
+            return base_val._replace(ray=n_r)
 
         def ff(rc):
-            return pack(idx+1, key, r, record.empty())  # no hit
+            return base_val  # no hit
 
         return lax.cond(record.exists(rc), tf, ff, rc)
 
@@ -84,10 +85,10 @@ def color(u, v, key):
         return (1-t) * vec.create(1, 1, 1) + t*vec.create(0.5, 0.7, 1.0)
 
     # return bg if missed, else black (max depth exceeded)
-    fv = lax.while_loop(cf, bf, iv)
-    idx, key, r, rc = unpack(fv)
-    color = jnp.power(0.5, idx - 1) * \
-        jnp.where(lax.bitwise_not(record.exists(rc)), bg(r), vec.create())
+    final_val = lax.while_loop(cf, bf, init_val)
+    color = jnp.power(0.5, final_val.idx - 1) * \
+        jnp.where(lax.bitwise_not(record.exists(final_val.record)),
+                  bg(final_val.ray), vec.create())
     # embed()
     return color
 
@@ -116,6 +117,11 @@ def trace(d):
     return jnp.int32(255.99 * jnp.sqrt(c))  # gamma correction
 
 
+@jit
+def render(idxs_rng):
+    return vmap(vmap(trace))(idxs_rng)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--debug", help="", action="store_true")
 args = parser.parse_args()
@@ -132,6 +138,7 @@ if args.debug:
     trace(i)
     sys.exit()
 
-img = vmap(vmap(trace))(idxs_rng)
+
+img = render(idxs_rng)
 pl = pixels.flatten(img)
 pixels.write(pl)

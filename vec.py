@@ -1,3 +1,4 @@
+from collections import namedtuple
 from IPython import embed
 
 import jax
@@ -5,8 +6,8 @@ from jax import lax, vmap
 import jax.numpy as jnp
 
 
-def create(e0=0, e1=0, e2=0):
-    return jnp.float32([e0, e1, e2])
+def create(x=0, y=0, z=0):
+    return jnp.float32([x, y, z])
 
 
 def unit(v):
@@ -43,32 +44,24 @@ def equal(v1, v2):
 
 
 def random(key):
-    return jax.random.uniform(key, (1, 3), minval=-1, maxval=1)
+    return jax.random.uniform(key, (3,), minval=-1, maxval=1)
 
 
 def sphere(key):
     # random vector in unit sphere
+    Value = namedtuple("Value", ["key", "vec"])
 
-    def pack(key, v): return jnp.vstack((jnp.float32([0, *key]), v))
+    def cf(val):
+        return jnp.power(norm(val.vec), 2) > 1
 
-    def unpack(d):
-        (_, *key), v = d
-        return jnp.uint32(key), v
+    def bf(val):
+        key, subkey = jax.random.split(val.key)
+        vec = random(subkey)
+        return Value(key=key, vec=vec)
 
-    def cf(d):
-        _, v = unpack(d)
-        return jnp.power(norm(v), 2) > 1
-
-    def bf(d):
-        key, _ = unpack(d)
-        key, subkey = jax.random.split(key)
-        v = random(subkey)
-        return pack(key, v)
-
-    iv = pack(key, create(1, 1, 1))
-    fv = lax.while_loop(cf, bf, iv)
-    _, v = unpack(fv)
-    return v
+    init_val = Value(key=key, vec=create(1, 1, 1))
+    final_val = lax.while_loop(cf, bf, init_val)
+    return final_val.vec
 
 
 if __name__ == "__main__":
@@ -78,4 +71,3 @@ if __name__ == "__main__":
     def check(v): assert jnp.power(norm(v), 2) <= 1
     for v in vs:
         check(v)
-    embed()
