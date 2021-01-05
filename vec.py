@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 
 def create(e0=0, e1=0, e2=0):
-    return jnp.float32(e0, e1, e2])
+    return jnp.float32([e0, e1, e2])
 
 
 def unit(v):
@@ -39,7 +39,7 @@ def equal(v1, v2):
 
 
 def random(key):
-    return jax.random.uniform(key, (1, 3))
+    return jax.random.uniform(key, (1, 3), minval=-1, maxval=1)
 
 
 def sphere(key):
@@ -62,7 +62,6 @@ def sphere(key):
         return pack(key, v)
 
     iv = pack(key, create(1, 1, 1))
-    # embed()
     fv = lax.while_loop(cf, bf, iv)
     _, v = unpack(fv)
     return v

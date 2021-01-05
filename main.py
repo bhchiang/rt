@@ -33,37 +33,41 @@ g = group.create(surfaces)
 
 
 def pack(idx, key, r, rc):
-    return jnp.vstack(([float(idx), *key], r, rc))
+    # careful: float32 to preserve precision of key
+    return jnp.vstack((jnp.float32([idx, *key]), r, rc))
 
 
 def unpack(v):
-    (idx, *key), r, *rc = v
-    return idx, jnp.uint32(key), r, jnp.array(rc)
+    (idx, *key), orig, dir, *rc = v
+    r = ray.create(orig, dir)
+    return jnp.int32(idx), jnp.uint32(key), r, jnp.array(rc)
 
 
 def color(u, v, key):
+    # embed()
     r = camera.shoot(u, v)
 
     # propagate ray iteratively until no surface hit or max depth reached
     iv = pack(0, key, r, record.empty())
-    embed()
 
     def cf(v):
         idx, _, _, rc = unpack(v)
-        # continue if first iter, surface hit and max depth not reached
+        # continue if first iter OR surface hit and max depth not reached
         return lax.bitwise_or(
-            lax.eq(idx, 0), record.exists(rc), lax.lt(idx, MAX_DEPTH))
+            lax.eq(idx, 0), lax.bitwise_and(record.exists(rc), lax.lt(idx, MAX_DEPTH)))
 
     def bf(v):
         idx, key, r, rc = unpack(v)
-        rc = group.hit(r, 0., jnp.inf, g)
 
-        # generate new key
+        # avoid hitting surface we are reflecting off of
+        rc = group.hit(r, 0.001, jnp.inf, g)
+
+        # have to generate new key for carry
         key, subkey = random.split(key)
 
         def tf(rc):
             # generate next ray
-            t, p, ff, n = record.unpack(rc)
+            _, p, _, n = record.unpack(rc)
             target = p + n + vec.sphere(subkey)
             n_r = ray.create(p, target - p)
             return pack(idx+1, key, n_r, rc)
@@ -80,31 +84,36 @@ def color(u, v, key):
         t = 0.5 * (vec.y(u_d) + 1)  # -1 < y < 1 -> 0 < t < 1
         return (1-t) * vec.create(1, 1, 1) + t*vec.create(0.5, 0.7, 1.0)
 
-    # return (1) black if depth exceeded or (2) modulated background
-    v = lax.while_loop(cf, bf, iv)
-    embed()
-    return vec.create()
+    # return bg if missed, else black (max depth exceeded)
+    fv = lax.while_loop(cf, bf, iv)
+    idx, key, r, rc = unpack(fv)
+    color = jnp.power(0.5, idx - 1) * \
+        jnp.where(lax.bitwise_not(record.exists(rc)), bg(r), vec.create())
+    # embed()
+    return color
 
 
 def trace(d):
     # (i, j) = (0, 0) is lower left corner
     # (IMAGE_WIDTH, IMAGE_HEIGHT) is upper right
-    i, j, *k = d
-    key = jnp.array(k)
+    i, j, *key = d
+    key = jnp.uint32(key)
 
     # create perturbations for anti-aliasing
     ps = random.uniform(key, (SAMPLES_PER_PIXEL, 2))
+    keys = random.split(key, (SAMPLES_PER_PIXEL))
 
     def sample(d):
-        pu, pv = d
+        pu, pv, *sample_key = d
+        sample_key = jnp.uint32(sample_key)
         u = (i + pu) / (IMAGE_WIDTH - 1)
         v = (j + pv) / (IMAGE_HEIGHT - 1)
-        return color(u, v, key)
+        return color(u, v, sample_key)
 
-    colors = vmap(sample)(ps)
-    c = jnp.sum(colors, axis=0) / SAMPLES_PER_PIXEL
     # embed()
-
+    ps_rng = jnp.hstack((ps, keys))
+    colors = vmap(sample)(ps_rng)
+    c = jnp.sum(colors, axis=0) / SAMPLES_PER_PIXEL
     return jnp.int32(255.99 * c)
 
 
@@ -114,16 +123,16 @@ args = parser.parse_args()
 
 key = random.PRNGKey(0)
 keys = random.split(key, IMAGE_HEIGHT *
-                    IMAGE_WIDTH).reshape(IMAGE_HEIGHT, IMAGE_WIDTH, 2)  # uint32
-final_idxs = jnp.dstack(
+                    IMAGE_WIDTH).reshape(IMAGE_HEIGHT, IMAGE_WIDTH, 2)
+idxs_rng = jnp.dstack(
     (jnp.uint32(idxs), keys))  # prevent key overflow
 
 if args.debug:
-    trace(idxs[IMAGE_HEIGHT // 2, IMAGE_WIDTH // 2])
-    # embed()
+    # i = idxs_rng[IMAGE_HEIGHT * 3//4, IMAGE_WIDTH // 2]
+    i = idxs_rng[194, 115]
+    trace(i)
     sys.exit()
 
-img = vmap(vmap(trace))(final_idxs)
-embed()
+img = vmap(vmap(trace))(idxs_rng)
 pl = pixels.flatten(img)
 pixels.write(pl)

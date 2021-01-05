@@ -45,7 +45,7 @@ def hit(r, t_min, t_max, sp):
 
         def create(dir):
             p = ray.at(r, t)  # get point of intersection
-            o_n = vec.unit(p - center)  # outward facing normal
+            o_n = (p - center) / radius  # outward facing normal
             # print(f'o_n = {o_n}, dir = {dir}')
             # front face = ray, o_n in opp dirs
             ff = lax.lt(jnp.dot(dir, o_n), 0.)
