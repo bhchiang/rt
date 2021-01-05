@@ -59,10 +59,9 @@ def color(u, v, key):
     def bf(v):
         idx, key, r, rc = unpack(v)
 
-        # avoid hitting surface we are reflecting off of
+        # avoid hitting surface we are reflecting off of (shadow acne)
         rc = group.hit(r, 0.001, jnp.inf, g)
 
-        # have to generate new key for carry
         key, subkey = random.split(key)
 
         def tf(rc):
@@ -114,7 +113,7 @@ def trace(d):
     ps_rng = jnp.hstack((ps, keys))
     colors = vmap(sample)(ps_rng)
     c = jnp.sum(colors, axis=0) / SAMPLES_PER_PIXEL
-    return jnp.int32(255.99 * c)
+    return jnp.int32(255.99 * jnp.sqrt(c))  # gamma correction
 
 
 parser = argparse.ArgumentParser()
