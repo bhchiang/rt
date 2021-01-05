@@ -1,4 +1,4 @@
-from camera import ASPECT_RATIO
+from .camera import ASPECT_RATIO
 
 IMAGE_WIDTH = 400
 IMAGE_HEIGHT = int(IMAGE_WIDTH / ASPECT_RATIO)

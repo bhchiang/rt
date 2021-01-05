@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-import vec
+from . import vec
 
 
 def create(orig, dir):

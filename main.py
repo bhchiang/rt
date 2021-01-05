@@ -7,12 +7,9 @@ from IPython import embed
 import jax.numpy as jnp
 from jax import vmap, lax, jit, random
 
-import ray
-import vec
-import camera
-import pixels
+from core import ray, vec, camera, pixels
 from surfaces import sphere, record, group
-from common import IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH
+from core.common import IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH
 
 
 # indices

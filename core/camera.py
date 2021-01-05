@@ -1,5 +1,4 @@
-import vec
-import ray
+from . import vec, ray
 
 ASPECT_RATIO = 16 / 9
 

@@ -3,8 +3,7 @@ from jax import lax
 
 
 from . import record
-import vec
-import ray
+from core import vec, ray
 
 
 def create(center, radius):

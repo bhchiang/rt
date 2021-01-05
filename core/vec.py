@@ -35,12 +35,8 @@ def pad(s, to=3):
         return jnp.zeros(to).at[0].set(s)
 
 
-def norm(v):
-    return jnp.linalg.norm(v)
-
-
 def equal(v1, v2):
-    return norm(v1 - v2) < 1e-6
+    return jnp.linalg.norm(v1 - v2) < 1e-6
 
 
 def random(key):
@@ -52,7 +48,7 @@ def sphere(key):
     Value = namedtuple("Value", ["key", "vec"])
 
     def cf(val):
-        return jnp.power(norm(val.vec), 2) > 1
+        return jnp.power(jnp.linalg.norm(val.vec), 2) > 1
 
     def bf(val):
         key, subkey = jax.random.split(val.key)
@@ -68,6 +64,6 @@ if __name__ == "__main__":
     key = jax.random.PRNGKey(0)
     # v = sphere(key)
     vs = vmap(sphere)(jax.random.split(key, 10))
-    def check(v): assert jnp.power(norm(v), 2) <= 1
+    def check(v): assert jnp.power(jnp.linalg.norm(v), 2) <= 1
     for v in vs:
         check(v)
