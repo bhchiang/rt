@@ -7,9 +7,8 @@ from IPython import embed
 import jax.numpy as jnp
 from jax import vmap, lax, jit, random
 
-from core import Ray, vec, camera, pixels
+from core import Ray, Camera, vec, pixels, IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH, ASPECT_RATIO
 from surfaces import sphere, record, group
-from core.common import IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH
 
 
 # indices
@@ -30,8 +29,7 @@ surfaces = [
 g = group.create(surfaces)
 
 
-def color(u, v, key):
-    r = camera.shoot(u, v)
+def color(r, key):
 
     # propagate ray iteratively until no surface hit or max depth reached
     Value = namedtuple("Value", ["idx", "key", "ray", "record"])
@@ -77,7 +75,7 @@ def color(u, v, key):
     return color
 
 
-def trace(d, key):
+def trace(d, key, camera):
     # (i, j) = (0, 0) is lower left
     # (IMAGE_WIDTH, IMAGE_HEIGHT) is upper right
     i, j = d
@@ -90,7 +88,8 @@ def trace(d, key):
         pu, pv = d
         u = (i + pu) / (IMAGE_WIDTH - 1)
         v = (j + pv) / (IMAGE_HEIGHT - 1)
-        return color(u, v, sample_key)
+        r = camera.shoot(u, v)
+        return color(r, sample_key)
 
     # embed()
     colors = vmap(sample)(ps, keys)
@@ -98,9 +97,16 @@ def trace(d, key):
     return jnp.int32(255.99 * jnp.sqrt(c))  # gamma correction
 
 
+camera = Camera(aspect_ratio=ASPECT_RATIO)
+
+
+def render(idxs, keys, camera):
+    return vmap(vmap(trace, in_axes=(0, 0, None)), in_axes=(0, 0, None))(idxs, keys, camera)
+
+
 @jit
-def render(idxs, rng):
-    return vmap(vmap(trace))(idxs, rng)
+def render_fn(camera):
+    return render(idxs, keys, camera)
 
 
 parser = argparse.ArgumentParser()
@@ -111,13 +117,14 @@ key = random.PRNGKey(0)
 keys = random.split(key, IMAGE_HEIGHT *
                     IMAGE_WIDTH).reshape(IMAGE_HEIGHT, IMAGE_WIDTH, 2)
 
+
 if args.debug:
     # i = idxs_rng[IMAGE_HEIGHT * 3//4, IMAGE_WIDTH // 2]
     i = 194
     j = 115
-    trace(idxs[i, j], keys[i, j])
+    trace(idxs[i, j], keys[i, j], camera)
     sys.exit()
 
-img = render(idxs, keys)
+img = render_fn(camera)
 pl = pixels.flatten(img)
 pixels.write(pl)

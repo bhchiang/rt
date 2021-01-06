@@ -7,7 +7,7 @@ def register_jax_dataclass(cls):
     if not dataclasses.is_dataclass(cls):
         raise TypeError('%s is not a dataclass.' % cls)
 
-    keys = [field.name for field in dataclasses.fields(cls)]
+    keys = [field.name for field in dataclasses.fields(cls) if field.init]
 
     def _flatten(obj):
         return [getattr(obj, key) for key in keys], None
@@ -21,4 +21,4 @@ def register_jax_dataclass(cls):
 
 def jax_dataclass(cls):
     """Decorator function to define a dataclass with JAX bindings."""
-    return register_jax_dataclass(dataclasses.dataclass(cls, frozen=True))
+    return register_jax_dataclass(dataclasses.dataclass(cls))  # frozen=True disables __post_init__
