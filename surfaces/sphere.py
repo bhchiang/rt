@@ -18,7 +18,7 @@ def unpack(sp):
 def hit(r, t_min, t_max, sp):
     # returns empty record if there are no valid hits
     center, radius = unpack(sp)  # sphere.unpack
-    orig, dir = r
+    orig, dir = r.origin, r.direction
 
     a = jnp.dot(dir, dir)
     h = jnp.dot(orig, dir) - jnp.dot(dir, center)  # b = 2h
@@ -43,7 +43,7 @@ def hit(r, t_min, t_max, sp):
         # print(f't = {t}')
 
         def create(dir):
-            p = ray.at(r, t)  # get point of intersection
+            p = r.at(t)  # get point of intersection
             o_n = (p - center) / radius  # outward facing normal
             # print(f'o_n = {o_n}, dir = {dir}')
             # front face = ray, o_n in opp dirs

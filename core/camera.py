@@ -1,4 +1,4 @@
-from . import vec, ray
+from . import vec, Ray
 
 ASPECT_RATIO = 16 / 9
 
@@ -17,4 +17,4 @@ lower_left_corner = origin - (horizontal/2) - \
 def shoot(u, v):
     begin = origin
     end = lower_left_corner + u*horizontal + v*vertical
-    return ray.create(origin, end - begin)
+    return Ray(origin=origin, direction=end - begin)

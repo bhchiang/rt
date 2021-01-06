@@ -1,1 +1,2 @@
-from . import camera, common, pixels, ray, vec
+from .ray import Ray
+from . import camera, common, pixels, vec

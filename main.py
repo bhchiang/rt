@@ -7,7 +7,7 @@ from IPython import embed
 import jax.numpy as jnp
 from jax import vmap, lax, jit, random
 
-from core import ray, vec, camera, pixels
+from core import Ray, vec, camera, pixels
 from surfaces import sphere, record, group
 from core.common import IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH
 
@@ -30,19 +30,7 @@ surfaces = [
 g = group.create(surfaces)
 
 
-# def pack(idx, key, r, rc):
-#     # careful: float32 to preserve precision of key
-#     return jnp.vstack((jnp.float32([idx, *key]), r, rc))
-
-
-# def unpack(v):
-#     (idx, *key), orig, dir, *rc = v
-#     r = ray.create(orig, dir)
-#     return jnp.int32(idx), jnp.uint32(key), r, jnp.array(rc)
-
-
 def color(u, v, key):
-    # embed()
     r = camera.shoot(u, v)
 
     # propagate ray iteratively until no surface hit or max depth reached
@@ -66,7 +54,7 @@ def color(u, v, key):
             # generate next ray
             _, p, _, n = record.unpack(rc)
             target = p + n + vec.sphere(subkey)
-            n_r = ray.create(p, target - p)
+            n_r = Ray(origin=p, direction=target-p)
             return base_val._replace(ray=n_r)
 
         def ff(rc):
@@ -76,8 +64,7 @@ def color(u, v, key):
 
     def bg(r):
         # get bg color given y component of ray
-        _, dir = ray.unpack(r)
-        u_d = vec.unit(dir)
+        u_d = vec.unit(r.direction)
         t = 0.5 * (vec.y(u_d) + 1)  # -1 < y < 1 -> 0 < t < 1
         return (1-t) * vec.create(1, 1, 1) + t*vec.create(0.5, 0.7, 1.0)
 
@@ -90,33 +77,30 @@ def color(u, v, key):
     return color
 
 
-def trace(d):
-    # (i, j) = (0, 0) is lower left corner
+def trace(d, key):
+    # (i, j) = (0, 0) is lower left
     # (IMAGE_WIDTH, IMAGE_HEIGHT) is upper right
-    i, j, *key = d
-    key = jnp.uint32(key)
+    i, j = d
 
     # create perturbations for anti-aliasing
     ps = random.uniform(key, (SAMPLES_PER_PIXEL, 2))
     keys = random.split(key, (SAMPLES_PER_PIXEL))
 
-    def sample(d):
-        pu, pv, *sample_key = d
-        sample_key = jnp.uint32(sample_key)
+    def sample(d, sample_key):
+        pu, pv = d
         u = (i + pu) / (IMAGE_WIDTH - 1)
         v = (j + pv) / (IMAGE_HEIGHT - 1)
         return color(u, v, sample_key)
 
     # embed()
-    ps_rng = jnp.hstack((ps, keys))
-    colors = vmap(sample)(ps_rng)
+    colors = vmap(sample)(ps, keys)
     c = jnp.sum(colors, axis=0) / SAMPLES_PER_PIXEL
     return jnp.int32(255.99 * jnp.sqrt(c))  # gamma correction
 
 
 @jit
-def render(idxs_rng):
-    return vmap(vmap(trace))(idxs_rng)
+def render(idxs, rng):
+    return vmap(vmap(trace))(idxs, rng)
 
 
 parser = argparse.ArgumentParser()
@@ -126,16 +110,14 @@ args = parser.parse_args()
 key = random.PRNGKey(0)
 keys = random.split(key, IMAGE_HEIGHT *
                     IMAGE_WIDTH).reshape(IMAGE_HEIGHT, IMAGE_WIDTH, 2)
-idxs_rng = jnp.dstack(
-    (jnp.uint32(idxs), keys))  # prevent key overflow
 
 if args.debug:
     # i = idxs_rng[IMAGE_HEIGHT * 3//4, IMAGE_WIDTH // 2]
-    i = idxs_rng[194, 115]
-    trace(i)
+    i = 194
+    j = 115
+    trace(idxs[i, j], keys[i, j])
     sys.exit()
 
-
-img = render(idxs_rng)
+img = render(idxs, keys)
 pl = pixels.flatten(img)
 pixels.write(pl)
