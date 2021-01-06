@@ -7,7 +7,8 @@ from IPython import embed
 import jax.numpy as jnp
 from jax import vmap, lax, jit, random
 
-from core import Ray, Camera, vec, pixels, IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH, ASPECT_RATIO
+from utils import io
+from core import Ray, Camera, vec, IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH, ASPECT_RATIO
 from surfaces import sphere, record, group
 
 
@@ -126,5 +127,4 @@ if args.debug:
     sys.exit()
 
 img = render_fn(camera)
-pl = pixels.flatten(img)
-pixels.write(pl)
+io.write(img)

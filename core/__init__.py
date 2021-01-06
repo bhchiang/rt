@@ -6,7 +6,7 @@ SAMPLES_PER_PIXEL = 50
 MAX_DEPTH = 50
 
 # avoid circular dependencies
-from . import vec, pixels
+from . import vec
 from .ray import Ray
 from .camera import Camera
 
