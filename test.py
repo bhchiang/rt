@@ -37,13 +37,13 @@ class TestTransforms(unittest.TestCase):
         # print(cameras_stacked)
 
     def test_pytree_vmap(self):
-        def f1(sp: Sphere) -> jnp.ndarray:
+        def f1(sp):
             return sp.center + sp.radius
 
         results = pytrees_vmap(f1)(self.surfaces)
         # print(results)
 
-        def f2(camera: Camera) -> jnp.ndarray:
+        def f2(camera):
             return jnp.where(camera.lower_left_corner[0] < -1.5, 1, 2)
 
         results = pytrees_vmap(f2)(self.cameras)
