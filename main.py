@@ -81,18 +81,18 @@ def trace(d, key, camera):
     i, j = d
 
     # create perturbations for anti-aliasing
-    ps = random.uniform(key, (SAMPLES_PER_PIXEL, 2))
+    deltas = random.uniform(key, (SAMPLES_PER_PIXEL, 2))
     keys = random.split(key, (SAMPLES_PER_PIXEL))
 
     def sample(d, sample_key):
-        pu, pv = d
-        u = (i + pu) / (IMAGE_WIDTH - 1)
-        v = (j + pv) / (IMAGE_HEIGHT - 1)
+        delta_i, delta_j = d
+        u = (i + delta_i) / (IMAGE_WIDTH - 1)
+        v = (j + delta_j) / (IMAGE_HEIGHT - 1)
         r = camera.shoot(u, v)
         return color(r, sample_key)
 
     # embed()
-    colors = vmap(sample)(ps, keys)
+    colors = vmap(sample)(deltas, keys)
     c = jnp.sum(colors, axis=0) / SAMPLES_PER_PIXEL
     return jnp.int32(255.99 * jnp.sqrt(c))  # gamma correction
 
