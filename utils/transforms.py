@@ -8,8 +8,9 @@ def pytrees_stack(pytrees, axis=0):
     return results
 
 
-def pytrees_vmap(fn, pytrees):
-    stacked = pytrees_stack(pytrees)
-    # print(stacked)
-    results = vmap(fn)(stacked)
-    return results
+def pytrees_vmap(fn):
+    def g(pytrees):
+        stacked = pytrees_stack(pytrees)
+        results = vmap(fn)(stacked)
+        return results
+    return g

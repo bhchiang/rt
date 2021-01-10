@@ -5,15 +5,16 @@ from jax import lax, vmap
 
 from . import record
 from . import Sphere
-from utils import jax_dataclass
+from utils import jax_dataclass, pytrees_vmap
 
 
+@jax_dataclass
 class Group:
     surfaces: list
 
     def hit(self, r, t_min, t_max):
         # trace all hits (no hit = empty record)
-        rcs = vmap(lambda sp: sp.hit(r, t_min, t_max))(self.surfaces)
+        rcs = pytrees_vmap(lambda sp: sp.hit(r, t_min, t_max))(self.surfaces)
 
         # lax scan for earliest hit time
         def f(carry, rc):

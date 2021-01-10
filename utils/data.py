@@ -14,7 +14,7 @@ def register_jax_dataclass(cls):
         return [getattr(obj, key) for key in keys], None
 
     def _unflatten(_, children):
-        print(keys, children)
+        # print(keys, children)
         return cls(**dict(zip(keys, children)))
 
     tree_util.register_pytree_node(cls, _flatten, _unflatten)

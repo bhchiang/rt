@@ -21,7 +21,7 @@ class Camera:
 
     def __post_init__(self):
         # (1) ignore dummy init for vmap - https://github.com/google/jax/blob/master/jax/api_util.py#L176
-        # (2) ignore post init if constructing from tree_multimap
+        # (2) ignore if constructing from stacked pytrees resulting from tree_multimap
         if type(self.aspect_ratio) == object or not isinstance(self.aspect_ratio, float):
             return
         self.viewport_width = self.aspect_ratio * self.viewport_height

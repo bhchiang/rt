@@ -23,13 +23,13 @@ idxs = jnp.dstack((us, jnp.flip(vs)))
 # print(idxs[IMAGE_HEIGHT, 0])
 # print(idxs[0, IMAGE_WIDTH])
 
-surfaces = jnp.array([
+surfaces = [
     Sphere(vec.create(0, 0, -1), 0.5),
     Sphere(vec.create(0, -100.5, -1), 100)
-])
-# g = Group(surfaces)
-sp = Sphere(vec.create(0, 0, -1), 0.5)
-embed()
+]
+g = Group(surfaces)
+# sp = Sphere(vec.create(0, 0, -1), 0.5)
+# embed()
 
 
 def color(r, key):
@@ -45,7 +45,7 @@ def color(r, key):
     def bf(val):
 
         # avoid hitting surface we are reflecting off of (shadow acne)
-        rc = sp.hit(val.ray, 0.001, jnp.inf)
+        rc = g.hit(val.ray, 0.001, jnp.inf)
 
         key, subkey = random.split(val.key)
         base_val = Value(idx=val.idx+1, key=key, ray=val.ray, record=rc)
