@@ -33,7 +33,7 @@ g = Group(surfaces)
 def color(r, key):
     # propagate ray iteratively until no surface hit or max depth reached
     Value = namedtuple("Value", ["idx", "key", "ray", "record"])
-    init_val = Value(idx=0, key=key, ray=r, record=Record.empty())
+    init_val = Value(idx=0, key=key, ray=r, record=Record(exists=False))
 
     def cf(val):
         # continue if first iter OR surface hit and max depth not reached

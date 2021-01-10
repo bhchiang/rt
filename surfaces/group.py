@@ -22,8 +22,6 @@ class Group:
                 earliest.exists), lax.lt(current.t, earliest.t))  # either rc is earlier or carry doesn't exist
             # jnp.where requires broadcastable arrays to work
             return lax.cond(lax.bitwise_and(replace, current.exists), lambda _: current, lambda _: earliest, 0), 0
-            # return jnp.where(lax.bitwise_and(replace, current.exists), current, earliest), 0
 
-        first, *_ = lax.scan(f, Record.empty(), rcs)
-        # print(first)
+        first, *_ = lax.scan(f, Record(exists=False), rcs)
         return first

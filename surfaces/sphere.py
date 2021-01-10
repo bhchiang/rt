@@ -24,7 +24,7 @@ class Sphere:
         d = h*h - a*c
 
         def empty(v):
-            return Record.empty()
+            return Record(exists=False)
         # print(h, d, a)
 
         def solve(v):
