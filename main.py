@@ -9,7 +9,7 @@ from jax import vmap, lax, jit, random
 
 from utils import io
 from core import Ray, Camera, vec, IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH, ASPECT_RATIO
-from surfaces import record, Sphere, Group
+from surfaces import Record, Sphere, Group
 
 
 # indices
@@ -28,19 +28,17 @@ surfaces = [
     Sphere(vec.create(0, -100.5, -1), 100)
 ]
 g = Group(surfaces)
-# sp = Sphere(vec.create(0, 0, -1), 0.5)
-# embed()
 
 
 def color(r, key):
     # propagate ray iteratively until no surface hit or max depth reached
     Value = namedtuple("Value", ["idx", "key", "ray", "record"])
-    init_val = Value(idx=0, key=key, ray=r, record=record.empty())
+    init_val = Value(idx=0, key=key, ray=r, record=Record.empty())
 
     def cf(val):
         # continue if first iter OR surface hit and max depth not reached
         return lax.bitwise_or(
-            lax.eq(val.idx, 0), lax.bitwise_and(record.exists(val.record), lax.lt(val.idx, MAX_DEPTH)))
+            lax.eq(val.idx, 0), lax.bitwise_and(val.record.exists, lax.lt(val.idx, MAX_DEPTH)))
 
     def bf(val):
 
@@ -52,7 +50,7 @@ def color(r, key):
 
         def tf(rc):
             # generate next ray
-            _, p, _, n = record.unpack(rc)
+            p, n = rc.p, rc.normal
             target = p + n + vec.sphere(subkey)
             n_r = Ray(origin=p, direction=target-p)
             return base_val._replace(ray=n_r)
@@ -60,7 +58,7 @@ def color(r, key):
         def ff(rc):
             return base_val  # no hit
 
-        return lax.cond(record.exists(rc), tf, ff, rc)
+        return lax.cond(rc.exists, tf, ff, rc)
 
     def bg(r):
         # get bg color given y component of ray
@@ -71,7 +69,7 @@ def color(r, key):
     # return bg if missed, else black (max depth exceeded)
     final_val = lax.while_loop(cf, bf, init_val)
     color = jnp.power(0.5, final_val.idx - 1) * \
-        jnp.where(lax.bitwise_not(record.exists(final_val.record)),
+        jnp.where(lax.bitwise_not(final_val.record.exists),
                   bg(final_val.ray), vec.create())
     # embed()
     return color

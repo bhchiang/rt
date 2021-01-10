@@ -3,7 +3,7 @@ from functools import partial
 import jax.numpy as jnp
 from jax import lax, vmap
 
-from . import record
+from . import Record
 from . import Sphere
 from utils import jax_dataclass, pytrees_vmap
 
@@ -17,13 +17,13 @@ class Group:
         rcs = pytrees_vmap(lambda sp: sp.hit(r, t_min, t_max))(self.surfaces)
 
         # lax scan for earliest hit time
-        def f(carry, rc):
-            t, *_ = record.unpack(carry)
-            t_, *_ = record.unpack(rc)
-            c = lax.bitwise_or(lax.bitwise_not(
-                record.exists(carry)), lax.lt(t_, t))  # either rc is earlier or carry doesn't exis
-            return jnp.where(lax.bitwise_and(c, record.exists(rc)), rc, carry), None
+        def f(earliest, current):
+            replace = lax.bitwise_or(lax.bitwise_not(
+                earliest.exists), lax.lt(current.t, earliest.t))  # either rc is earlier or carry doesn't exist
+            # jnp.where requires broadcastable arrays to work
+            return lax.cond(lax.bitwise_and(replace, current.exists), lambda _: current, lambda _: earliest, 0), 0
+            # return jnp.where(lax.bitwise_and(replace, current.exists), current, earliest), 0
 
-        first, *_ = lax.scan(f, record.empty(), rcs)
+        first, *_ = lax.scan(f, Record.empty(), rcs)
         # print(first)
         return first

@@ -1,18 +1,23 @@
 import jax.numpy as jnp
+from core import vec
+from utils import jax_dataclass
 
 
-def empty():
-    return jnp.zeros((3, 3))
+@jax_dataclass
+class Record:
+    t: jnp.float32
+    p: jnp.ndarray
+    normal: jnp.ndarray
+    front_face: bool
+    exists: bool = True
 
-
-def create(t, p, ff, n):
-    return jnp.array([p, n, [t, ff, 1]])
-
-
-def unpack(rc):
-    p, n, (t, ff, _) = rc
-    return (t, p, ff, n)
-
-
-def exists(rc):
-    return rc.any()
+    # TODO: come up with better way to do this
+    @classmethod
+    def empty(cls):
+        obj = object.__new__(cls)
+        obj.t = jnp.float32(0)
+        obj.p = vec.create()
+        obj.normal = vec.create()
+        obj.front_face = jnp.bool_(False)
+        obj.exists = jnp.bool_(False)
+        return obj

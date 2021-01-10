@@ -3,7 +3,7 @@ from jax import lax
 
 
 from utils import jax_dataclass
-from . import record
+from . import Record
 from core import vec
 
 
@@ -23,7 +23,8 @@ class Sphere:
         c = jnp.dot(oc, oc) - radius*radius
         d = h*h - a*c
 
-        empty = record.empty()
+        def empty(v):
+            return Record.empty()
         # print(h, d, a)
 
         def solve(v):
@@ -47,9 +48,9 @@ class Sphere:
                 ff = lax.lt(jnp.dot(dir, o_n), 0.)
 
                 n = jnp.where(ff, o_n, -o_n)  # points against ray
-                rec = record.create(t, p, ff, n)
+                rec = Record(t=t, p=p, normal=n, front_face=ff)
                 return rec
 
-            return lax.cond(t != -jnp.inf, create, lambda _: empty, dir)
+            return lax.cond(t != -jnp.inf, create, empty, dir)
 
-        return lax.cond(d > 0, solve, lambda _: record.empty(), jnp.array([h, d, a]))
+        return lax.cond(d > 0, solve, empty, jnp.array([h, d, a]))
