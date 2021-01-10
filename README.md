@@ -4,15 +4,17 @@
 
 ## Items
 
-- [ ] Use data classes (registered as pytrees) and namedtuples instead of manual packing
+- [x] Use data classes (registered as pytrees) and namedtuples instead of manual packing
 - [ ] Benchmark full JIT performance
 
 ## Usage
 
 ```
+# trace
 python main.py > out/image.ppm
 
-python main.py --debug
+# view
+eog out/image.ppm
 ```
 
 ## Lessons
@@ -26,4 +28,4 @@ Do the following inside `vmap` because of the tracing performed for vectorizatio
 - Be careful about passing `jax.random` keys around. They're of type `jnp.uint32`, casting to `jnp.int32` will lose the precision and can truncate to 0
 - Avoid using list / `[]`, use `jnp.array(...)` instead
 
-I put my JAX notes and experiments here: https://github.com/bryanhpchiang/jax-notes.
+More JAX notes and experiments here: https://github.com/bryanhpchiang/jax-notes.

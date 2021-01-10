@@ -7,12 +7,14 @@ def register_jax_dataclass(cls):
     if not dataclasses.is_dataclass(cls):
         raise TypeError('%s is not a dataclass.' % cls)
 
-    keys = [field.name for field in dataclasses.fields(cls) if field.init]
+    # keys = [field.name for field in dataclasses.fields(cls) if field.init]
+    keys = [field.name for field in dataclasses.fields(cls)]
 
     def _flatten(obj):
         return [getattr(obj, key) for key in keys], None
 
     def _unflatten(_, children):
+        print(keys, children)
         return cls(**dict(zip(keys, children)))
 
     tree_util.register_pytree_node(cls, _flatten, _unflatten)
@@ -21,4 +23,4 @@ def register_jax_dataclass(cls):
 
 def jax_dataclass(cls):
     """Decorator function to define a dataclass with JAX bindings."""
-    return register_jax_dataclass(dataclasses.dataclass(cls))  # frozen=True disables __post_init__
+    return register_jax_dataclass(dataclasses.dataclass(cls))  # frozen=True throws error on __post_init__

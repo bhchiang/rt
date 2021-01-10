@@ -9,7 +9,7 @@ from jax import vmap, lax, jit, random
 
 from utils import io
 from core import Ray, Camera, vec, IMAGE_HEIGHT, IMAGE_WIDTH, SAMPLES_PER_PIXEL, MAX_DEPTH, ASPECT_RATIO
-from surfaces import sphere, record, group
+from surfaces import record, Sphere, Group
 
 
 # indices
@@ -23,15 +23,16 @@ idxs = jnp.dstack((us, jnp.flip(vs)))
 # print(idxs[IMAGE_HEIGHT, 0])
 # print(idxs[0, IMAGE_WIDTH])
 
-surfaces = [
-    sphere.create(vec.create(0, 0, -1), 0.5),
-    sphere.create(vec.create(0, -100.5, -1), 100)
-]
-g = group.create(surfaces)
+surfaces = jnp.array([
+    Sphere(vec.create(0, 0, -1), 0.5),
+    Sphere(vec.create(0, -100.5, -1), 100)
+])
+# g = Group(surfaces)
+sp = Sphere(vec.create(0, 0, -1), 0.5)
+embed()
 
 
 def color(r, key):
-
     # propagate ray iteratively until no surface hit or max depth reached
     Value = namedtuple("Value", ["idx", "key", "ray", "record"])
     init_val = Value(idx=0, key=key, ray=r, record=record.empty())
@@ -44,7 +45,7 @@ def color(r, key):
     def bf(val):
 
         # avoid hitting surface we are reflecting off of (shadow acne)
-        rc = group.hit(val.ray, 0.001, jnp.inf, g)
+        rc = sp.hit(val.ray, 0.001, jnp.inf)
 
         key, subkey = random.split(val.key)
         base_val = Value(idx=val.idx+1, key=key, ray=val.ray, record=rc)

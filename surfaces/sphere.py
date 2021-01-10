@@ -2,57 +2,54 @@ import jax.numpy as jnp
 from jax import lax
 
 
+from utils import jax_dataclass
 from . import record
-from core import vec, ray
+from core import vec
 
 
-def create(center, radius):
-    return jnp.array([center, vec.pad(radius)])
+@jax_dataclass
+class Sphere:
+    center: jnp.ndarray
+    radius: jnp.float32
 
+    def hit(self, r, t_min, t_max):
+        # returns empty record if there are no valid hits
+        center, radius = self.center, self.radius
+        orig, dir = r.origin, r.direction
 
-def unpack(sp):
-    center, (radius, *_) = sp
-    return center, radius
+        a = jnp.dot(dir, dir)
+        h = jnp.dot(orig, dir) - jnp.dot(dir, center)  # b = 2h
+        oc = orig - center
+        c = jnp.dot(oc, oc) - radius*radius
+        d = h*h - a*c
 
+        empty = record.empty()
+        # print(h, d, a)
 
-def hit(r, t_min, t_max, sp):
-    # returns empty record if there are no valid hits
-    center, radius = unpack(sp)  # sphere.unpack
-    orig, dir = r.origin, r.direction
+        def solve(v):
+            h, d, a = v
 
-    a = jnp.dot(dir, dir)
-    h = jnp.dot(orig, dir) - jnp.dot(dir, center)  # b = 2h
-    oc = orig - center
-    c = jnp.dot(oc, oc) - radius*radius
-    d = h*h - a*c
+            def valid(t):
+                return jnp.array([lax.ge(t, t_min), lax.le(t, t_max)]).all()
 
-    empty = record.empty()
-    # print(h, d, a)
+            t_1 = (-h - jnp.sqrt(d)) / a  # first hit
+            t_2 = (-h + jnp.sqrt(d)) / a  # second hit
+            t_2 = jnp.where(valid(t_2), t_2, -jnp.inf)
+            t = jnp.where(valid(t_1), t_1, t_2)
 
-    def solve(v):
-        h, d, a = v
+            # print(f't = {t}')
 
-        def valid(t):
-            return jnp.array([lax.ge(t, t_min), lax.le(t, t_max)]).all()
+            def create(dir):
+                p = r.at(t)  # get point of intersection
+                o_n = (p - center) / radius  # outward facing normal
+                # print(f'o_n = {o_n}, dir = {dir}')
+                # front face = ray, o_n in opp dirs
+                ff = lax.lt(jnp.dot(dir, o_n), 0.)
 
-        t_1 = (-h - jnp.sqrt(d)) / a  # first hit
-        t_2 = (-h + jnp.sqrt(d)) / a  # second hit
-        t_2 = jnp.where(valid(t_2), t_2, -jnp.inf)
-        t = jnp.where(valid(t_1), t_1, t_2)
+                n = jnp.where(ff, o_n, -o_n)  # points against ray
+                rec = record.create(t, p, ff, n)
+                return rec
 
-        # print(f't = {t}')
+            return lax.cond(t != -jnp.inf, create, lambda _: empty, dir)
 
-        def create(dir):
-            p = r.at(t)  # get point of intersection
-            o_n = (p - center) / radius  # outward facing normal
-            # print(f'o_n = {o_n}, dir = {dir}')
-            # front face = ray, o_n in opp dirs
-            ff = lax.lt(jnp.dot(dir, o_n), 0.)
-
-            n = jnp.where(ff, o_n, -o_n)  # points against ray
-            rec = record.create(t, p, ff, n)
-            return rec
-
-        return lax.cond(t != -jnp.inf, create, lambda _: empty, dir)
-
-    return lax.cond(d > 0, solve, lambda _: record.empty(), jnp.array([h, d, a]))
+        return lax.cond(d > 0, solve, lambda _: record.empty(), jnp.array([h, d, a]))
