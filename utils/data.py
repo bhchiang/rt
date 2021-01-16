@@ -7,7 +7,6 @@ def register_jax_dataclass(cls):
     if not dataclasses.is_dataclass(cls):
         raise TypeError('%s is not a dataclass.' % cls)
 
-    # keys = [field.name for field in dataclasses.fields(cls) if field.init]
     keys = [field.name for field in dataclasses.fields(cls)]
 
     def _flatten(obj):

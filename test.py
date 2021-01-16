@@ -6,7 +6,7 @@ from jax import tree_multimap, vmap
 
 from utils import pytrees_stack, pytrees_vmap
 from core import Camera
-from surfaces import Sphere
+from surfaces import Sphere, Lambertian
 
 
 class TestTransforms(unittest.TestCase):
@@ -27,27 +27,35 @@ class TestTransforms(unittest.TestCase):
         ]
 
         self.cameras = [
-            Camera(16/9),
-            Camera(4/3)
+            Camera(aspect_ratio=16/9),
+            Camera(aspect_ratio=4/3)
         ]
 
     def test_pytree_stack(self):
         # values_stacked = pytrees_stack(self.values)
+        # return: array of Camera objects
         cameras_stacked = pytrees_stack(self.cameras)
-        # print(cameras_stacked)
+        print(cameras_stacked)
 
     def test_pytree_vmap(self):
         def f1(sp):
             return sp.center + sp.radius
 
         results = pytrees_vmap(f1)(self.surfaces)
-        # print(results)
+        print(results)
 
         def f2(camera):
             return jnp.where(camera.lower_left_corner[0] < -1.5, 1, 2)
 
         results = pytrees_vmap(f2)(self.cameras)
         print(results)
+
+
+class TestMaterials(unittest.TestCase):
+    def test_create_child(self):
+        m = Lambertian()
+        print(m)
+        pass
 
 
 if __name__ == '__main__':

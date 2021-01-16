@@ -36,7 +36,7 @@ def pad(s, to=3):
 
 
 def equal(v1, v2):
-    return jnp.linalg.norm(v1 - v2) < 1e-6
+    return jnp.linalg.norm(v1 - v2) < 1e-8
 
 
 def random(key):
